@@ -1,0 +1,218 @@
+name: picorv32
+version: 0.1.0
+spec: '0.1'
+kind: ip
+lang: verilog
+identity:
+  slug: picorv32-tapeout-foreign
+  display_name: PicoRV32
+  summary: YosysHQ's size-optimised RV32 core, taken as a black box.
+  category: processor
+  subcategories:
+  - riscv
+  ip_family: picorv32
+  integration_profile: []
+  maturity: planned
+contract:
+  version: 1
+  ctrl:
+    # 它是核，不是总线从设备：没有控制寄存器口
+    shape: none
+    aw: 32
+    dw: 32
+# 下面三段由 tools/mkknobs.py 从 third_party/picorv32/picorv32.v 生成，勿手改
+params:
+# <params>
+  maskedIrq:
+    type: int
+    default: 0
+    range:
+    - 0
+    - 4294967295
+  latchedIrq:
+    type: int
+    default: 4294967295
+    range:
+    - 0
+    - 4294967295
+  progaddrReset:
+    type: int
+    default: 0
+    range:
+    - 0
+    - 4294967295
+  progaddrIrq:
+    type: int
+    default: 16
+    range:
+    - 0
+    - 4294967295
+  stackaddr:
+    type: int
+    default: 4294967295
+    range:
+    - 0
+    - 4294967295
+# </params>
+features:
+# <features>
+  enableCounters:
+    type: bool
+    default: true
+  enableCounters64:
+    type: bool
+    default: true
+  enableRegs1631:
+    type: bool
+    default: true
+  enableRegsDualport:
+    type: bool
+    default: true
+  twoStageShift:
+    type: bool
+    default: true
+  barrelShifter:
+    type: bool
+    default: false
+  twoCycleCompare:
+    type: bool
+    default: false
+  twoCycleAlu:
+    type: bool
+    default: false
+  compressedIsa:
+    type: bool
+    default: false
+  catchMisalign:
+    type: bool
+    default: true
+  catchIllinsn:
+    type: bool
+    default: true
+  enablePcpi:
+    type: bool
+    default: false
+  enableMul:
+    type: bool
+    default: false
+  enableFastMul:
+    type: bool
+    default: false
+  enableDiv:
+    type: bool
+    default: false
+  enableIrq:
+    type: bool
+    default: false
+  enableIrqQregs:
+    type: bool
+    default: true
+  enableIrqTimer:
+    type: bool
+    default: true
+  enableTrace:
+    type: bool
+    default: false
+  regsInitZero:
+    type: bool
+    default: false
+# </features>
+emit:
+- kind: foreign
+  lang: verilog
+  top: picorv32_axi
+  rtl:
+  - third_party/picorv32/picorv32.v
+  sim:
+  - third_party/picorv32/picorv32.v
+  params:
+# <PARAMS>
+    ENABLE_COUNTERS: enableCounters
+    ENABLE_COUNTERS64: enableCounters64
+    ENABLE_REGS_16_31: enableRegs1631
+    ENABLE_REGS_DUALPORT: enableRegsDualport
+    TWO_STAGE_SHIFT: twoStageShift
+    BARREL_SHIFTER: barrelShifter
+    TWO_CYCLE_COMPARE: twoCycleCompare
+    TWO_CYCLE_ALU: twoCycleAlu
+    COMPRESSED_ISA: compressedIsa
+    CATCH_MISALIGN: catchMisalign
+    CATCH_ILLINSN: catchIllinsn
+    ENABLE_PCPI: enablePcpi
+    ENABLE_MUL: enableMul
+    ENABLE_FAST_MUL: enableFastMul
+    ENABLE_DIV: enableDiv
+    ENABLE_IRQ: enableIrq
+    ENABLE_IRQ_QREGS: enableIrqQregs
+    ENABLE_IRQ_TIMER: enableIrqTimer
+    ENABLE_TRACE: enableTrace
+    REGS_INIT_ZERO: regsInitZero
+    MASKED_IRQ: maskedIrq
+    LATCHED_IRQ: latchedIrq
+    PROGADDR_RESET: progaddrReset
+    PROGADDR_IRQ: progaddrIrq
+    STACKADDR: stackaddr
+# </PARAMS>
+  clock:
+    port: clk
+  reset:
+    port: resetn
+    active: low
+    sync: true
+  ports:
+  - endpoint: mem
+    kind: transaction
+    role: manager
+    profile: axi4-lite
+    prefix: mem_axi_
+  - endpoint: irq
+    kind: event
+    role: sink
+    map:
+      irq: irq
+  - endpoint: eoi
+    kind: event
+    role: source
+    map:
+      eoi: eoi
+  - endpoint: trap
+    kind: event
+    role: source
+    map:
+      trap: trap
+  - endpoint: pcpi
+    kind: physical
+    type: PcpiPins
+    map:
+      valid: pcpi_valid
+      insn: pcpi_insn
+      rs1: pcpi_rs1
+      rs2: pcpi_rs2
+      wr: pcpi_wr
+      rd: pcpi_rd
+      wait: pcpi_wait
+      ready: pcpi_ready
+  limits:
+  - 取指与访存共用一个 AXI4-Lite 主口，没有突发
+  - rvfi 那组端口要 RISCV_FORMAL 宏才存在，本声明不含
+test:
+  # 上游自己的测试。接别人的核，最有说服力的证据是它自己的测试在我们配出来的
+  # 每一组参数下还过——我们重写的那份只覆盖得了我们已经理解的部分。
+  # testbench_ez 不要固件、不要工具链，所以每一点都跑得起
+  upstream:
+  - name: ez
+    files:
+    - third_party/picorv32/testbench_ez.v
+    - third_party/picorv32/picorv32.v
+    dut: testbench.uut
+  # 地址类参数取两端没有意义：复位地址设成全一，取指第一拍就飞了。
+  # 它们照样是旋钮，只是不进派生矩阵
+  noarea:
+  - maskedIrq
+  - latchedIrq
+  - progaddrReset
+  - progaddrIrq
+  - stackaddr
+targets:
+  foreign:
+    driver: foreign
