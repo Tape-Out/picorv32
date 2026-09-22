@@ -220,6 +220,12 @@ test:
   - progaddrReset
   - progaddrIrq
   - stackaddr
+tasks:
+  # 上游自带的一条：把它的测试台跑一遍，用的是它自己的 Makefile。
+  # 这类命令进不了构建图，要 `ran run picorv32 upstream` 才跑
+  upstream:
+    run: make -C third_party/picorv32 test_ez
+    desc: 跑上游自己的 testbench_ez
 targets:
   foreign:
     driver: foreign
