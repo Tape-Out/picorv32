@@ -180,6 +180,13 @@ emit:
     role: source
     map:
       trap: trap
+  # enableTrace 打开时这两根才有意义，但端口一直在
+  - endpoint: trace
+    kind: stream
+    role: source
+    map:
+      valid: trace_valid
+      data: trace_data
   - endpoint: pcpi
     kind: physical
     type: PcpiPins
